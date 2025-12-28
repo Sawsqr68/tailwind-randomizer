@@ -1,0 +1,38 @@
+{
+  "name": "randomizer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./bundler-plugin": {
+      "import": "./dist/bundler-plugin.mjs",
+      "require": "./dist/bundler-plugin.cjs"
+    },
+    "./postcss-plugin": {
+      "import": "./dist/postcss-plugin.mjs",
+      "require": "./dist/postcss-plugin.cjs"
+    }
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit",
+    "build": "tsdown"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "eslint": "^9.39.1",
+    "typescript": "5.9.2",
+    "tsdown": "^0.18.3"
+  },
+  "dependencies": {
+    "@swc/core": "^1.15.7",
+    "nanoid": "^5.1.6"
+  },
+  "peerDependencies": {
+    "postcss": "^8.5.6"
+  }
+}
