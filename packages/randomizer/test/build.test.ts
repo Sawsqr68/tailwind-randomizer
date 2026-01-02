@@ -28,7 +28,6 @@ describe("Build Server Obfuscation", () => {
       const buildProcess = spawn("pnpm", ["build"], {
         cwd: FIXTURE_DIR,
         stdio: "pipe",
-        shell: true,
         env: {
           ...process.env,
         },
@@ -65,7 +64,6 @@ describe("Build Server Obfuscation", () => {
     startProcess = spawn("pnpm", ["start"], {
       cwd: FIXTURE_DIR,
       stdio: "pipe",
-      shell: true,
       env: {
         ...process.env,
         PORT: PORT.toString(),

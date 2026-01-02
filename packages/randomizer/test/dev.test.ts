@@ -24,7 +24,6 @@ describe("Dev Server Obfuscation", () => {
     devProcess = spawn("pnpm", ["dev"], {
       cwd: FIXTURE_DIR,
       stdio: "pipe",
-      shell: true,
       env: {
         ...process.env,
         PORT: PORT.toString(),
