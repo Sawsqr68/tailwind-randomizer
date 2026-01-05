@@ -1,6 +1,6 @@
 {
-  "name": "randomizer-t",
-  "private": true,
+  "name": "tailwind-randomizer-monorepo",
+  "description": "plugin to obfuscate tailwindcss class names.",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -8,8 +8,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "build:randomizer": "turbo run build --filter=randomizer",
-    "dev:web": "turbo run dev --filter=web",
+    "build:randomizer": "turbo run build --filter=tailwind-randomizer",
+    "dev:www": "turbo run dev --filter=www",
     "clean": "rm -rf apps/www/.next",
     "test": "turbo run test",
     "release": "changeset version",
@@ -27,5 +27,9 @@
   "dependencies": {
     "@changesets/changelog-github": "^0.5.2",
     "@changesets/cli": "^2.29.8"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }
