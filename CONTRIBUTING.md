@@ -151,3 +151,34 @@ pnpm test
 ```
 
 Please ensure that the tests are passing when submitting a pull request. If you're adding new features, please include tests.
+
+## Security
+
+Security is a top priority for this project. When contributing, please follow these security guidelines:
+
+### Code Security Guidelines
+
+1. **Input Validation**: Always validate and sanitize user input
+2. **Path Security**: Use path normalization and validation for file system operations
+3. **Command Execution**: Use `execFile` instead of `exec` to prevent command injection
+4. **Error Handling**: Implement proper error handling, especially for JSON parsing and file operations
+5. **Dependencies**: Keep dependencies up to date and check for vulnerabilities
+
+### Before Submitting
+
+1. Run `pnpm lint` to ensure code quality
+2. Run `pnpm check-types` to verify TypeScript types
+3. Run `pnpm test` to ensure all tests pass
+4. Review your changes for any security implications
+
+### Reporting Security Issues
+
+If you discover a security vulnerability, please do NOT open a public issue. Instead, follow the process outlined in our [SECURITY.md](./SECURITY.md) file.
+
+### Security Best Practices
+
+- Never commit secrets, API keys, or credentials
+- Use secure coding practices to prevent common vulnerabilities (XSS, SQL injection, path traversal, etc.)
+- Follow the principle of least privilege when handling permissions
+- Validate all external input and file paths
+- Use parameterized queries and safe APIs
