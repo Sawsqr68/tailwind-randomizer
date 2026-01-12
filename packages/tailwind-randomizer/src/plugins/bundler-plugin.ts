@@ -11,6 +11,8 @@ const nanoid = customAlphabet(
 
 const classMap = new Map();
 const MAP_FILE = getSecureFilePath(".next/class-map.json");
+let flushTimeout: NodeJS.Timeout | null = null;
+let mapDirty = false;
 
 function flushMap() {
   const obj = Object.fromEntries(classMap);
@@ -19,7 +21,47 @@ function flushMap() {
   // Create directory and write file - path is already validated
   fs.mkdirSync(dirPath, { recursive: true });
   fs.writeFileSync(MAP_FILE, JSON.stringify(obj, null, 2));
+  mapDirty = false;
 }
+
+function scheduleFlush() {
+  mapDirty = true;
+  
+  // Debounce file writes - only write after 100ms of inactivity
+  if (flushTimeout) {
+    clearTimeout(flushTimeout);
+  }
+  
+  flushTimeout = setTimeout(() => {
+    if (mapDirty) {
+      flushMap();
+    }
+  }, 100);
+}
+
+// Ensure flush happens on process exit
+process.on('exit', () => {
+  if (mapDirty && flushTimeout) {
+    clearTimeout(flushTimeout);
+    flushMap();
+  }
+});
+
+process.on('SIGINT', () => {
+  if (mapDirty && flushTimeout) {
+    clearTimeout(flushTimeout);
+    flushMap();
+  }
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  if (mapDirty && flushTimeout) {
+    clearTimeout(flushTimeout);
+    flushMap();
+  }
+  process.exit(0);
+});
 
 function get(cls: string): string {
   if (!classMap.has(cls)) {
@@ -44,8 +86,15 @@ export default function bundlerPlugin(source: string) {
   function walk(node: any) {
     if (!node || typeof node !== "object") return;
 
+    // Early exit for non-JSX nodes - skip processing nodes that can't contain className
+    const nodeType = node.type;
+    if (nodeType === "StringLiteral" || nodeType === "NumericLiteral" || 
+        nodeType === "BooleanLiteral" || nodeType === "NullLiteral") {
+      return;
+    }
+
     if (
-      node.type === "JSXAttribute" &&
+      nodeType === "JSXAttribute" &&
       node.name?.type === "Identifier" &&
       node.name.value === "className"
     ) {
@@ -70,6 +119,6 @@ export default function bundlerPlugin(source: string) {
   }
 
   walk(ast);
-  flushMap();
+  scheduleFlush();
   return printSync(ast).code;
 }
