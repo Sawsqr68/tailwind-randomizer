@@ -10,8 +10,8 @@ function getSecureMapFilePath(): string {
   // Use path.relative to check if the path escapes the working directory
   const relativePath = path.relative(cwd, mapPath);
   
-  // Ensure the path doesn't start with '..' and isn't an absolute path to a different location
-  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+  // Ensure the path doesn't start with '..' (escaping parent directory)
+  if (relativePath.startsWith('..')) {
     throw new Error("Invalid map file path: path traversal detected");
   }
   
