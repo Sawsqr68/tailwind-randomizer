@@ -43,8 +43,10 @@ function scheduleFlush() {
 
 // Ensure final flush on process exit
 process.once('beforeExit', () => {
-  if (isDirty && flushTimer) {
+  if (flushTimer) {
     clearTimeout(flushTimer);
+  }
+  if (isDirty) {
     flushMap();
   }
 });
