@@ -8,9 +8,9 @@ const MAP_FILE = getSecureFilePath(".next/class-map.json");
 function toTailwindSelector(className: string) {
   return className
     .split("")
-    .map((ch) => {
-      if (/^[a-zA-Z0-9_-]$/.test(ch)) return ch;
-      return "\\" + ch;
+    .map((character) => {
+      if (/^[a-zA-Z0-9_-]$/.test(character)) return character;
+      return "\\" + character;
     })
     .join("");
 }
@@ -23,13 +23,13 @@ const postcssPlugin: PluginCreator<Record<string, never>> = () => {
 
       if (!fs.existsSync(MAP_FILE)) return;
 
-      let map: Record<string, string>;
+      let classNameMap: Record<string, string>;
       try {
         const fileContent = fs.readFileSync(MAP_FILE, "utf8");
-        map = JSON.parse(fileContent);
+        classNameMap = JSON.parse(fileContent);
         
-        // Validate that map is an object
-        if (typeof map !== "object" || map === null || Array.isArray(map)) {
+        // Validate that classNameMap is an object
+        if (typeof classNameMap !== "object" || classNameMap === null || Array.isArray(classNameMap)) {
           throw new Error("Invalid class map format");
         }
       } catch (error) {
@@ -37,19 +37,19 @@ const postcssPlugin: PluginCreator<Record<string, never>> = () => {
         return;
       }
 
-      console.log("🧩 Tailwind Replacer Class Map:", Object.keys(map).length);
+      console.log("🧩 Tailwind Replacer Class Map:", Object.keys(classNameMap).length);
 
       root.walkRules((rule: Rule) => {
         const original = rule.selector;
 
         let rewritten = original;
 
-        for (const [orig, obf] of Object.entries(map)) {
-          const tw = "." + toTailwindSelector(orig);
-          const target = "." + obf;
+        for (const [originalClassName, obfuscatedClassName] of Object.entries(classNameMap)) {
+          const tailwindSelector = "." + toTailwindSelector(originalClassName);
+          const targetSelector = "." + obfuscatedClassName;
 
-          if (rewritten === tw) {
-            rewritten = rewritten.split(tw).join(target);
+          if (rewritten === tailwindSelector) {
+            rewritten = rewritten.split(tailwindSelector).join(targetSelector);
           }
         }
 
