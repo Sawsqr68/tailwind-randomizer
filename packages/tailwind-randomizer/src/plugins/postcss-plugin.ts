@@ -6,7 +6,9 @@ import { getSecureFilePath } from "../utils/path-security";
 const MAP_FILE = getSecureFilePath(".next/class-map.json");
 
 // Cache for escaped selectors to avoid recomputation
+// Limited to 1000 entries to prevent memory leaks in long-running processes
 const selectorCache = new Map<string, string>();
+const MAX_CACHE_SIZE = 1000;
 
 function toTailwindSelector(className: string): string {
   if (selectorCache.has(className)) {
@@ -20,6 +22,13 @@ function toTailwindSelector(className: string): string {
       return "\\" + ch;
     })
     .join("");
+  
+  // Limit cache size to prevent memory leaks
+  if (selectorCache.size >= MAX_CACHE_SIZE) {
+    // Clear oldest entries (first 100) when limit is reached
+    const keysToDelete = Array.from(selectorCache.keys()).slice(0, 100);
+    keysToDelete.forEach(key => selectorCache.delete(key));
+  }
   
   selectorCache.set(className, escaped);
   return escaped;

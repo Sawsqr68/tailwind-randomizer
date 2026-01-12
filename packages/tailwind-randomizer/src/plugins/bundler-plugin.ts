@@ -42,14 +42,18 @@ function scheduleFlush() {
 }
 
 // Ensure final flush on process exit
-process.once('beforeExit', () => {
+const flushOnExit = () => {
   if (flushTimer) {
     clearTimeout(flushTimer);
   }
   if (isDirty) {
     flushMap();
   }
-});
+};
+
+process.once('beforeExit', flushOnExit);
+process.once('SIGINT', flushOnExit);
+process.once('SIGTERM', flushOnExit);
 
 function get(cls: string): string {
   if (!classMap.has(cls)) {
