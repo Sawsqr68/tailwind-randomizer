@@ -2,6 +2,7 @@ import { parseSync, printSync } from "@swc/core";
 import fs from "fs";
 import path from "path";
 import { customAlphabet } from "nanoid";
+import { getSecureFilePath } from "../utils/path-security";
 
 const nanoid = customAlphabet(
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
@@ -9,11 +10,14 @@ const nanoid = customAlphabet(
 );
 
 const classMap = new Map();
-const MAP_FILE = path.join(process.cwd(), ".next/class-map.json");
+const MAP_FILE = getSecureFilePath(".next/class-map.json");
 
 function flushMap() {
   const obj = Object.fromEntries(classMap);
-  fs.mkdirSync(path.dirname(MAP_FILE), { recursive: true });
+  const dirPath = path.dirname(MAP_FILE);
+  
+  // Create directory and write file - path is already validated
+  fs.mkdirSync(dirPath, { recursive: true });
   fs.writeFileSync(MAP_FILE, JSON.stringify(obj, null, 2));
 }
 

@@ -1,8 +1,9 @@
 import fs from "fs";
 import path from "path";
 import type { Root, Rule, PluginCreator } from "postcss";
+import { getSecureFilePath } from "../utils/path-security";
 
-const MAP_FILE = path.join(process.cwd(), ".next/class-map.json");
+const MAP_FILE = getSecureFilePath(".next/class-map.json");
 
 function toTailwindSelector(className: string) {
   return className
@@ -22,7 +23,19 @@ const postcssPlugin: PluginCreator<Record<string, never>> = () => {
 
       if (!fs.existsSync(MAP_FILE)) return;
 
-      const map = JSON.parse(fs.readFileSync(MAP_FILE, "utf8"));
+      let map: Record<string, string>;
+      try {
+        const fileContent = fs.readFileSync(MAP_FILE, "utf8");
+        map = JSON.parse(fileContent);
+        
+        // Validate that map is an object
+        if (typeof map !== "object" || map === null || Array.isArray(map)) {
+          throw new Error("Invalid class map format");
+        }
+      } catch (error) {
+        console.error("🧩 Error reading or parsing class map:", error);
+        return;
+      }
 
       console.log("🧩 Tailwind Replacer Class Map:", Object.keys(map).length);
 
