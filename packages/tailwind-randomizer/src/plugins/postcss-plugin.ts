@@ -25,9 +25,16 @@ function toTailwindSelector(className: string): string {
   
   // Limit cache size to prevent memory leaks
   if (selectorCache.size >= MAX_CACHE_SIZE) {
-    // Clear oldest entries (first 100) when limit is reached
-    const keysToDelete = Array.from(selectorCache.keys()).slice(0, 100);
-    keysToDelete.forEach(key => selectorCache.delete(key));
+    // Simple eviction: clear half the cache when limit is reached
+    // This avoids O(n) operation of creating arrays for every insert
+    const iterator = selectorCache.keys();
+    const deleteCount = Math.floor(MAX_CACHE_SIZE / 2);
+    for (let i = 0; i < deleteCount; i++) {
+      const key = iterator.next().value;
+      if (key !== undefined) {
+        selectorCache.delete(key);
+      }
+    }
   }
   
   selectorCache.set(className, escaped);

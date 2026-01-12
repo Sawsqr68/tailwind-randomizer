@@ -47,13 +47,23 @@ const flushOnExit = () => {
     clearTimeout(flushTimer);
   }
   if (isDirty) {
-    flushMap();
+    try {
+      flushMap();
+    } catch (error) {
+      console.error('Failed to flush class map on exit:', error);
+    }
   }
 };
 
 process.once('beforeExit', flushOnExit);
-process.once('SIGINT', flushOnExit);
-process.once('SIGTERM', flushOnExit);
+process.once('SIGINT', () => {
+  flushOnExit();
+  process.exit(0);
+});
+process.once('SIGTERM', () => {
+  flushOnExit();
+  process.exit(0);
+});
 
 function get(cls: string): string {
   if (!classMap.has(cls)) {
