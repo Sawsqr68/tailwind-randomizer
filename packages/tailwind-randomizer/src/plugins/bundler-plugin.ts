@@ -52,7 +52,6 @@ process.on('SIGINT', () => {
     clearTimeout(flushTimeout);
     flushMap();
   }
-  process.exit(0);
 });
 
 process.on('SIGTERM', () => {
@@ -60,7 +59,6 @@ process.on('SIGTERM', () => {
     clearTimeout(flushTimeout);
     flushMap();
   }
-  process.exit(0);
 });
 
 function get(cls: string): string {
