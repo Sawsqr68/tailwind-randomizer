@@ -2,6 +2,7 @@ import { parseSync, printSync } from "@swc/core";
 import fs from "fs";
 import path from "path";
 import { customAlphabet } from "nanoid";
+import { getSecureFilePath } from "../utils/path-security";
 
 const nanoid = customAlphabet(
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
@@ -9,37 +10,13 @@ const nanoid = customAlphabet(
 );
 
 const classMap = new Map();
-
-// Ensure the map file path is within the project directory to prevent path traversal
-function getSecureMapFilePath(): string {
-  const cwd = path.resolve(process.cwd());
-  const mapPath = path.resolve(cwd, ".next/class-map.json");
-  
-  // Use path.relative to check if the path escapes the working directory
-  const relativePath = path.relative(cwd, mapPath);
-  
-  // Ensure the path doesn't start with '..' (escaping parent directory)
-  if (relativePath.startsWith('..')) {
-    throw new Error("Invalid map file path: path traversal detected");
-  }
-  
-  return mapPath;
-}
-
-const MAP_FILE = getSecureMapFilePath();
+const MAP_FILE = getSecureFilePath(".next/class-map.json");
 
 function flushMap() {
   const obj = Object.fromEntries(classMap);
   const dirPath = path.dirname(MAP_FILE);
   
-  // Additional check before creating directory
-  const cwd = path.resolve(process.cwd());
-  const relativeDirPath = path.relative(cwd, dirPath);
-  
-  if (relativeDirPath.startsWith('..')) {
-    throw new Error("Invalid directory path: path traversal detected");
-  }
-  
+  // Create directory and write file - path is already validated
   fs.mkdirSync(dirPath, { recursive: true });
   fs.writeFileSync(MAP_FILE, JSON.stringify(obj, null, 2));
 }

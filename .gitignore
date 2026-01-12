@@ -43,7 +43,6 @@ pnpm-debug.log*
 
 # Misc
 .DS_Store
-*.pem
 next-env.d.ts
 
 # Class map (generated at build time, contains obfuscated class mappings)

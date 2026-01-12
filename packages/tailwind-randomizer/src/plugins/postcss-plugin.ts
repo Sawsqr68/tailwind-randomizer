@@ -1,24 +1,9 @@
 import fs from "fs";
 import path from "path";
 import type { Root, Rule, PluginCreator } from "postcss";
+import { getSecureFilePath } from "../utils/path-security";
 
-// Ensure the map file path is within the project directory to prevent path traversal
-function getSecureMapFilePath(): string {
-  const cwd = path.resolve(process.cwd());
-  const mapPath = path.resolve(cwd, ".next/class-map.json");
-  
-  // Use path.relative to check if the path escapes the working directory
-  const relativePath = path.relative(cwd, mapPath);
-  
-  // Ensure the path doesn't start with '..' (escaping parent directory)
-  if (relativePath.startsWith('..')) {
-    throw new Error("Invalid map file path: path traversal detected");
-  }
-  
-  return mapPath;
-}
-
-const MAP_FILE = getSecureMapFilePath();
+const MAP_FILE = getSecureFilePath(".next/class-map.json");
 
 function toTailwindSelector(className: string) {
   return className
