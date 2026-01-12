@@ -13,23 +13,23 @@ const classMap = new Map();
 const MAP_FILE = getSecureFilePath(".next/class-map.json");
 
 function flushMap() {
-  const obj = Object.fromEntries(classMap);
+  const classMapObject = Object.fromEntries(classMap);
   const dirPath = path.dirname(MAP_FILE);
   
   // Create directory and write file - path is already validated
   fs.mkdirSync(dirPath, { recursive: true });
-  fs.writeFileSync(MAP_FILE, JSON.stringify(obj, null, 2));
+  fs.writeFileSync(MAP_FILE, JSON.stringify(classMapObject, null, 2));
 }
 
-function get(cls: string): string {
-  if (!classMap.has(cls)) {
-    classMap.set(cls, nanoid());
+function getOrCreateObfuscatedClassName(className: string): string {
+  if (!classMap.has(className)) {
+    classMap.set(className, nanoid());
   }
-  return classMap.get(cls);
+  return classMap.get(className);
 }
 
 function rewriteString(value: string) {
-  return value.split(/\s+/).map(get).join(" ");
+  return value.split(/\s+/).map(getOrCreateObfuscatedClassName).join(" ");
 }
 
 export default function bundlerPlugin(source: string) {
@@ -41,7 +41,7 @@ export default function bundlerPlugin(source: string) {
     decorators: false,
   });
 
-  function walk(node: any) {
+  function traverseAstAndObfuscateClassNames(node: any) {
     if (!node || typeof node !== "object") return;
 
     if (
@@ -49,27 +49,27 @@ export default function bundlerPlugin(source: string) {
       node.name?.type === "Identifier" &&
       node.name.value === "className"
     ) {
-      const v = node.value;
+      const attributeValue = node.value;
 
-      if (v?.type === "StringLiteral") {
-        const newValue = rewriteString(v.value);
-        v.value = newValue;
-        v.raw = JSON.stringify(newValue);
+      if (attributeValue?.type === "StringLiteral") {
+        const newValue = rewriteString(attributeValue.value);
+        attributeValue.value = newValue;
+        attributeValue.raw = JSON.stringify(newValue);
       }
 
-      if (v?.type === "JSXExpressionContainer") {
-        walk(v.expression);
+      if (attributeValue?.type === "JSXExpressionContainer") {
+        traverseAstAndObfuscateClassNames(attributeValue.expression);
       }
     }
 
     for (const key in node) {
       const child = node[key];
-      if (Array.isArray(child)) child.forEach(walk);
-      else if (child && typeof child === "object") walk(child);
+      if (Array.isArray(child)) child.forEach(traverseAstAndObfuscateClassNames);
+      else if (child && typeof child === "object") traverseAstAndObfuscateClassNames(child);
     }
   }
 
-  walk(ast);
+  traverseAstAndObfuscateClassNames(ast);
   flushMap();
   return printSync(ast).code;
 }
