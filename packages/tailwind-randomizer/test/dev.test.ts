@@ -10,6 +10,14 @@ import {
   CLASS_MAP_FILE,
   NEXT_DIR,
 } from "./utils";
+import {
+  startServer,
+  stopServer,
+  validateClassMap,
+  toTailwindSelector,
+  assertClassMapValidation,
+  assertHtmlObfuscation,
+} from "./test-helpers";
 
 describe("Dev Server Obfuscation", () => {
   let devProcess: ReturnType<typeof spawn> | null = null;
@@ -21,103 +29,21 @@ describe("Dev Server Obfuscation", () => {
 
     await cleanupNextDir();
 
-    devProcess = spawn("pnpm", ["dev"], {
+    devProcess = await startServer({
       cwd: FIXTURE_DIR,
-      stdio: "pipe",
-      env: {
-        ...process.env,
-        PORT: PORT.toString(),
-      },
+      port: PORT,
+      command: ["pnpm", "dev"],
+      timeoutSeconds: 60,
     });
 
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        devProcess?.kill("SIGTERM");
-        reject(new Error("Dev server failed to start within 60 seconds"));
-      }, 60000);
-
-      let serverReady = false;
-
-      const checkServer = async () => {
-        try {
-          const response = await fetch(BASE_URL);
-          if (response.ok) {
-            serverReady = true;
-            clearTimeout(timeout);
-            setTimeout(resolve, 5000);
-          }
-        } catch {}
-      };
-
-      devProcess!.stdout?.on("data", (data: Buffer) => {
-        const output = data.toString();
-        if (
-          (output.includes("Ready") ||
-            output.includes("started server") ||
-            output.includes(`localhost:${PORT}`)) &&
-          !serverReady
-        ) {
-          const interval = setInterval(async () => {
-            if (serverReady) {
-              clearInterval(interval);
-              return;
-            }
-            await checkServer();
-          }, 1000);
-        }
-      });
-
-      devProcess!.stderr?.on("data", (data: Buffer) => {
-        const output = data.toString();
-        console.error(output);
-      });
-
-      devProcess!.on("error", (error) => {
-        clearTimeout(timeout);
-        reject(error);
-      });
-    });
+    // Wait a bit longer for dev server to be fully ready
+    await new Promise((resolve) => setTimeout(resolve, 5000));
   }, 120000);
 
   afterAll(async () => {
     try {
       if (devProcess) {
-        await new Promise<void>((resolve) => {
-          let resolved = false;
-          const timeout = setTimeout(() => {
-            if (!resolved) {
-              resolved = true;
-              try {
-                if (devProcess && !devProcess.killed) {
-                  devProcess.kill("SIGKILL");
-                }
-              } catch (error) {}
-              resolve();
-            }
-          }, 10000);
-
-          const exitHandler = () => {
-            if (!resolved) {
-              resolved = true;
-              clearTimeout(timeout);
-              resolve();
-            }
-          };
-
-          if (
-            (devProcess as any).exitCode !== null ||
-            (devProcess as any).signalCode !== null
-          ) {
-            exitHandler();
-          } else {
-            devProcess?.once("exit", exitHandler);
-            try {
-              devProcess?.kill("SIGTERM");
-            } catch (error) {
-              exitHandler();
-            }
-          }
-        });
+        await stopServer(devProcess);
         await new Promise((resolve) => setTimeout(resolve, 3000));
       }
 
@@ -132,32 +58,7 @@ describe("Dev Server Obfuscation", () => {
   });
 
   it("should obfuscate class names in class-map.json", () => {
-    expect(existsSync(CLASS_MAP_FILE)).toBe(true);
-
-    const classMapContent = readFileSync(CLASS_MAP_FILE, "utf-8");
-    const classMap: { [key: string]: string } = JSON.parse(classMapContent);
-
-    expect(Object.keys(classMap).length).toBeGreaterThan(0);
-
-    for (const [original, obfuscated] of Object.entries(classMap)) {
-      expect(original).not.toBe(obfuscated);
-      expect(typeof obfuscated).toBe("string");
-      expect(obfuscated.length).toBeGreaterThan(0);
-      expect(obfuscated).toMatch(/^[a-zA-Z]+$/);
-    }
-
-    const expectedClasses = [
-      "flex",
-      "min-h-screen",
-      "items-center",
-      "justify-center",
-      "bg-zinc-50",
-    ];
-
-    const hasExpectedClass = expectedClasses.some((cls) =>
-      Object.keys(classMap).includes(cls),
-    );
-    expect(hasExpectedClass).toBe(true);
+    assertClassMapValidation(CLASS_MAP_FILE, expect);
   });
 
   it("should serve obfuscated HTML", async () => {
@@ -165,33 +66,12 @@ describe("Dev Server Obfuscation", () => {
     expect(response.ok).toBe(true);
 
     const html = await response.text();
-
-    if (existsSync(CLASS_MAP_FILE)) {
-      const classMapContent = readFileSync(CLASS_MAP_FILE, "utf-8");
-      const classMap = JSON.parse(classMapContent);
-
-      const obfuscatedClasses = Object.values(classMap) as string[];
-      const hasObfuscatedClass = obfuscatedClasses.some((obfClass) =>
-        html.includes(obfClass),
-      );
-
-      expect(hasObfuscatedClass).toBe(true);
-
-      const originalClasses = Object.keys(classMap);
-      originalClasses.some((origClass) =>
-        html.includes(`className="${origClass}"`),
-      );
-    }
+    assertHtmlObfuscation(html, CLASS_MAP_FILE, expect);
   });
 
   it("should obfuscate CSS selectors in generated CSS", () => {
-    if (!existsSync(CLASS_MAP_FILE)) {
-      throw new Error("class-map.json not found");
-    }
-
-    const classMapContent = readFileSync(CLASS_MAP_FILE, "utf-8");
-    const classMap = JSON.parse(classMapContent);
-    const obfuscatedClasses = Object.values(classMap) as string[];
+    const { classMap, obfuscatedClasses, originalClasses } =
+      validateClassMap(CLASS_MAP_FILE);
 
     const staticCssDir = path.join(NEXT_DIR, "/dev/static/css/app");
     if (existsSync(staticCssDir)) {
@@ -209,14 +89,10 @@ describe("Dev Server Obfuscation", () => {
 
         expect(hasObfuscatedSelector).toBe(true);
 
-        const originalClasses = Object.keys(classMap);
         const sampleOriginalClasses = originalClasses.slice(0, 5);
 
         for (const origClass of sampleOriginalClasses) {
-          const twSelector = `.${origClass
-            .split("")
-            .map((ch) => (/^[a-zA-Z0-9_-]$/.test(ch) ? ch : "\\" + ch))
-            .join("")}`;
+          const twSelector = `.${toTailwindSelector(origClass)}`;
           const obfClass = classMap[origClass];
 
           if (cssContent.includes(`.${obfClass}`)) {

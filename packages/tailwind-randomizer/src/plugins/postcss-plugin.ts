@@ -2,18 +2,9 @@ import fs from "fs";
 import path from "path";
 import type { Root, Rule, PluginCreator } from "postcss";
 import { getSecureFilePath } from "../utils/path-security";
+import { toTailwindSelector } from "../utils/tailwind-selector";
 
 const MAP_FILE = getSecureFilePath(".next/class-map.json");
-
-function toTailwindSelector(className: string) {
-  return className
-    .split("")
-    .map((ch) => {
-      if (/^[a-zA-Z0-9_-]$/.test(ch)) return ch;
-      return "\\" + ch;
-    })
-    .join("");
-}
 
 const postcssPlugin: PluginCreator<Record<string, never>> = () => {
   return {
