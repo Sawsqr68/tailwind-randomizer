@@ -4,18 +4,18 @@ import type { Root, Rule, PluginCreator } from "postcss";
 
 // Ensure the map file path is within the project directory to prevent path traversal
 function getSecureMapFilePath(): string {
-  const cwd = process.cwd();
-  const mapPath = path.join(cwd, ".next/class-map.json");
+  const cwd = path.resolve(process.cwd());
+  const mapPath = path.resolve(cwd, ".next/class-map.json");
   
-  // Normalize the path to resolve any ".." sequences
-  const normalizedPath = path.normalize(mapPath);
+  // Use path.relative to check if the path escapes the working directory
+  const relativePath = path.relative(cwd, mapPath);
   
-  // Ensure the resolved path is still within the cwd
-  if (!normalizedPath.startsWith(path.normalize(cwd))) {
+  // Ensure the path doesn't start with '..' and isn't an absolute path to a different location
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
     throw new Error("Invalid map file path: path traversal detected");
   }
   
-  return normalizedPath;
+  return mapPath;
 }
 
 const MAP_FILE = getSecureMapFilePath();
