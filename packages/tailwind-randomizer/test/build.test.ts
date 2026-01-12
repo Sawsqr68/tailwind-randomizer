@@ -17,6 +17,8 @@ import {
   stopServer,
   validateClassMap,
   toTailwindSelector,
+  assertClassMapValidation,
+  assertHtmlObfuscation,
 } from "./test-helpers";
 
 describe("Build Server Obfuscation", () => {
@@ -91,32 +93,7 @@ describe("Build Server Obfuscation", () => {
   });
 
   it("should obfuscate class names in class-map.json", () => {
-    expect(existsSync(CLASS_MAP_FILE)).toBe(true);
-
-    const classMapContent = readFileSync(CLASS_MAP_FILE, "utf-8");
-    const classMap: { [key: string]: string } = JSON.parse(classMapContent);
-
-    expect(Object.keys(classMap).length).toBeGreaterThan(0);
-
-    for (const [original, obfuscated] of Object.entries(classMap)) {
-      expect(original).not.toBe(obfuscated);
-      expect(typeof obfuscated).toBe("string");
-      expect(obfuscated.length).toBeGreaterThan(0);
-      expect(obfuscated).toMatch(/^[a-zA-Z]+$/);
-    }
-
-    const expectedClasses = [
-      "flex",
-      "min-h-screen",
-      "items-center",
-      "justify-center",
-      "bg-zinc-50",
-    ];
-
-    const hasExpectedClass = expectedClasses.some((cls) =>
-      Object.keys(classMap).includes(cls),
-    );
-    expect(hasExpectedClass).toBe(true);
+    assertClassMapValidation(CLASS_MAP_FILE, expect);
   });
 
   it("should serve obfuscated HTML", async () => {
@@ -124,23 +101,7 @@ describe("Build Server Obfuscation", () => {
     expect(response.ok).toBe(true);
 
     const html = await response.text();
-
-    if (existsSync(CLASS_MAP_FILE)) {
-      const classMapContent = readFileSync(CLASS_MAP_FILE, "utf-8");
-      const classMap = JSON.parse(classMapContent);
-
-      const obfuscatedClasses = Object.values(classMap) as string[];
-      const hasObfuscatedClass = obfuscatedClasses.some((obfClass) =>
-        html.includes(obfClass),
-      );
-
-      expect(hasObfuscatedClass).toBe(true);
-
-      const originalClasses = Object.keys(classMap);
-      originalClasses.some((origClass) =>
-        html.includes(`className="${origClass}"`),
-      );
-    }
+    assertHtmlObfuscation(html, CLASS_MAP_FILE, expect);
   });
 
   it("should obfuscate CSS selectors in generated CSS", () => {

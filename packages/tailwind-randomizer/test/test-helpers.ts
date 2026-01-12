@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from "child_process";
 import { existsSync, readFileSync } from "fs";
 import { toTailwindSelector } from "../src/utils/tailwind-selector";
+import type { expect } from "vitest";
 
 export { toTailwindSelector };
 
@@ -150,3 +151,60 @@ export function validateClassMap(classMapFile: string): {
 
   return { classMap, obfuscatedClasses, originalClasses };
 }
+
+/**
+ * Common assertions for class map validation tests
+ */
+export function assertClassMapValidation(
+  classMapFile: string,
+  expectFn: typeof expect,
+): void {
+  expectFn(existsSync(classMapFile)).toBe(true);
+
+  const classMapContent = readFileSync(classMapFile, "utf-8");
+  const classMap: Record<string, string> = JSON.parse(classMapContent);
+
+  expectFn(Object.keys(classMap).length).toBeGreaterThan(0);
+
+  for (const [original, obfuscated] of Object.entries(classMap)) {
+    expectFn(original).not.toBe(obfuscated);
+    expectFn(typeof obfuscated).toBe("string");
+    expectFn(obfuscated.length).toBeGreaterThan(0);
+    expectFn(obfuscated).toMatch(/^[a-zA-Z]+$/);
+  }
+
+  const expectedClasses = [
+    "flex",
+    "min-h-screen",
+    "items-center",
+    "justify-center",
+    "bg-zinc-50",
+  ];
+
+  const hasExpectedClass = expectedClasses.some((cls) =>
+    Object.keys(classMap).includes(cls),
+  );
+  expectFn(hasExpectedClass).toBe(true);
+}
+
+/**
+ * Common assertions for HTML obfuscation tests
+ */
+export function assertHtmlObfuscation(
+  html: string,
+  classMapFile: string,
+  expectFn: typeof expect,
+): void {
+  if (!existsSync(classMapFile)) return;
+
+  const classMapContent = readFileSync(classMapFile, "utf-8");
+  const classMap = JSON.parse(classMapContent);
+
+  const obfuscatedClasses = Object.values(classMap) as string[];
+  const hasObfuscatedClass = obfuscatedClasses.some((obfClass) =>
+    html.includes(obfClass),
+  );
+
+  expectFn(hasObfuscatedClass).toBe(true);
+}
+
