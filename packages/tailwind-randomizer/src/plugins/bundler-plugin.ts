@@ -9,11 +9,35 @@ const nanoid = customAlphabet(
 );
 
 const classMap = new Map();
-const MAP_FILE = path.join(process.cwd(), ".next/class-map.json");
+
+// Ensure the map file path is within the project directory to prevent path traversal
+function getSecureMapFilePath(): string {
+  const cwd = process.cwd();
+  const mapPath = path.join(cwd, ".next/class-map.json");
+  
+  // Normalize the path to resolve any ".." sequences
+  const normalizedPath = path.normalize(mapPath);
+  
+  // Ensure the resolved path is still within the cwd
+  if (!normalizedPath.startsWith(path.normalize(cwd))) {
+    throw new Error("Invalid map file path: path traversal detected");
+  }
+  
+  return normalizedPath;
+}
+
+const MAP_FILE = getSecureMapFilePath();
 
 function flushMap() {
   const obj = Object.fromEntries(classMap);
-  fs.mkdirSync(path.dirname(MAP_FILE), { recursive: true });
+  const dirPath = path.dirname(MAP_FILE);
+  
+  // Additional check before creating directory
+  if (!dirPath.startsWith(path.normalize(process.cwd()))) {
+    throw new Error("Invalid directory path: path traversal detected");
+  }
+  
+  fs.mkdirSync(dirPath, { recursive: true });
   fs.writeFileSync(MAP_FILE, JSON.stringify(obj, null, 2));
 }
 

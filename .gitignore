@@ -7,6 +7,7 @@ node_modules
 
 # Local env files
 .env
+.env.*
 .env.local
 .env.development.local
 .env.test.local
@@ -27,13 +28,23 @@ out/
 build
 dist
 
+# Sensitive files
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
 
 # Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # Misc
 .DS_Store
 *.pem
 next-env.d.ts
+
+# Class map (generated at build time, contains obfuscated class mappings)
+.next/class-map.json
