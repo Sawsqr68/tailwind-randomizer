@@ -12,6 +12,9 @@ const nanoid = customAlphabet(
 const classMap = new Map();
 const MAP_FILE = getSecureFilePath(".next/class-map.json");
 
+let flushTimer: NodeJS.Timeout | null = null;
+let isDirty = false;
+
 function flushMap() {
   const obj = Object.fromEntries(classMap);
   const dirPath = path.dirname(MAP_FILE);
@@ -19,7 +22,32 @@ function flushMap() {
   // Create directory and write file - path is already validated
   fs.mkdirSync(dirPath, { recursive: true });
   fs.writeFileSync(MAP_FILE, JSON.stringify(obj, null, 2));
+  isDirty = false;
 }
+
+function scheduleFlush() {
+  isDirty = true;
+  
+  // Debounce file writes - only write after 100ms of inactivity
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+  }
+  
+  flushTimer = setTimeout(() => {
+    if (isDirty) {
+      flushMap();
+    }
+    flushTimer = null;
+  }, 100);
+}
+
+// Ensure final flush on process exit
+process.once('beforeExit', () => {
+  if (isDirty && flushTimer) {
+    clearTimeout(flushTimer);
+    flushMap();
+  }
+});
 
 function get(cls: string): string {
   if (!classMap.has(cls)) {
@@ -33,8 +61,6 @@ function rewriteString(value: string) {
 }
 
 export default function bundlerPlugin(source: string) {
-  console.log("🧩 Transforming");
-
   const ast = parseSync(source, {
     syntax: "typescript",
     tsx: true,
@@ -70,6 +96,6 @@ export default function bundlerPlugin(source: string) {
   }
 
   walk(ast);
-  flushMap();
+  scheduleFlush();
   return printSync(ast).code;
 }

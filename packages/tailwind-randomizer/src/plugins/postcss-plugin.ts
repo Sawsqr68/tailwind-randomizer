@@ -5,22 +5,30 @@ import { getSecureFilePath } from "../utils/path-security";
 
 const MAP_FILE = getSecureFilePath(".next/class-map.json");
 
-function toTailwindSelector(className: string) {
-  return className
+// Cache for escaped selectors to avoid recomputation
+const selectorCache = new Map<string, string>();
+
+function toTailwindSelector(className: string): string {
+  if (selectorCache.has(className)) {
+    return selectorCache.get(className)!;
+  }
+  
+  const escaped = className
     .split("")
     .map((ch) => {
       if (/^[a-zA-Z0-9_-]$/.test(ch)) return ch;
       return "\\" + ch;
     })
     .join("");
+  
+  selectorCache.set(className, escaped);
+  return escaped;
 }
 
 const postcssPlugin: PluginCreator<Record<string, never>> = () => {
   return {
     postcssPlugin: "tailwind-class-rewrite",
     Once(root: Root) {
-      console.log("🧩 Tailwind Class Rewriter Plugin Initialized");
-
       if (!fs.existsSync(MAP_FILE)) return;
 
       let map: Record<string, string>;
@@ -37,24 +45,18 @@ const postcssPlugin: PluginCreator<Record<string, never>> = () => {
         return;
       }
 
-      console.log("🧩 Tailwind Replacer Class Map:", Object.keys(map).length);
+      // Pre-compute all selector mappings for faster lookup
+      const selectorMap = new Map<string, string>();
+      for (const [orig, obf] of Object.entries(map)) {
+        const tw = "." + toTailwindSelector(orig);
+        const target = "." + obf;
+        selectorMap.set(tw, target);
+      }
 
       root.walkRules((rule: Rule) => {
-        const original = rule.selector;
-
-        let rewritten = original;
-
-        for (const [orig, obf] of Object.entries(map)) {
-          const tw = "." + toTailwindSelector(orig);
-          const target = "." + obf;
-
-          if (rewritten === tw) {
-            rewritten = rewritten.split(tw).join(target);
-          }
-        }
-
-        if (rewritten !== original) {
-          rule.selector = rewritten;
+        const replacement = selectorMap.get(rule.selector);
+        if (replacement) {
+          rule.selector = replacement;
         }
       });
     },
